@@ -115,58 +115,93 @@ namespace FS_SwingSystem
 
         public void RopeUpdate()
         {
+            // ropeState가 RopeState.Climbing 상황이 아니라면, 
+            // ropeState가 Swinging일 경우 왼손으로 아니면 오른손으로 잡는 포인트를 지정
+            // 스윙상태가 아닐때 로프를 잡는 손의 위치를 변경한다
             if (ropeState != RopeState.Climbing)
                 currentRopeHoldPointTransform = ropeState == RopeState.Swinging ? ropeHoldTransformLeft : ropeHoldTransformRight;
 
-
+            // hookRope의 점 개수가 0보다 크면, 로프가 그려질수 있는 상태라면
             if (hookRope.positionCount > 0)
             {
+                // 현재 로프를 잡는위치와 hookPoint 사이의 거리를 hookRopeLength에 넣어라
                 hookRopeLength = Vector3.Distance(currentRopeHoldPointTransform.position, hookPoint);
+                // ropeState가 Swinging 또는 Climbing 중일 경우
                 if (ropeState == RopeState.Swinging || ropeState == RopeState.Climbing)
                 {
+                    // 로프의 첫 번째 점을 현재잡는 위치로 설정 
                     hookRopePositions[0] = currentRopeHoldPointTransform.position;
+                    // 로프의 두 번째 점을 로프가 몸체에 붙은 위치로 설정
                     hookRopePositions[1] = ropeAttachPointToHook.position;
                 }
                 else
                 {
+                    // SimulateHookRopePhysics을 호출
                     SimulateHookRopePhysics();
                 }
-
+                // 
                 UpdateHookRopeLineRenderer();
             }
 
+            // 로프를 잡고있는 상황이면
             if (holdRope.positionCount > 0)
             {
+                // SimulateHoldRopePhysics 실행
                 SimulateHoldRopePhysics();
+                // UpdateHoldRopeLineRenderer 실행
                 UpdateHoldRopeLineRenderer();
             }
         }
 
+        // 로프 라인 렌더러 업데이트
         void UpdateHookRopeLineRenderer()
         {
+            // hookRope에 라인 렌더러가 있다, 라인 렌더러로 hookRopePositions(Vector3 배열)값으로 선을 연결하라
             hookRope.SetPositions(hookRopePositions);
         }
+
+        // 로프를 직선 상태로 설정
         public void SetHookRopeAsStraight()
         {
+            // hookRope에 그릴 점의 개수는 2개
             hookRope.positionCount = 2;
+            // 점 좌표를 저장할 배열의 크기를 2로 초기화
             hookRopePositions = new Vector3[2];
         }
+
+        // 로프의 물리 시뮬레이션
         void SimulateHookRopePhysics()
         {
+            // segmentLength는 로프 전체 길이를 점 개수 - 1로 나눈 값
+            // 점들 사이 간격을 균일하게 유지하기 위한 기준 길이입니다.
             float segmentLength = hookRopeLength / (hookRopeResolution - 1);
+            // hookRopePositions 배열의 내용울, hookRopePreviousPositions 배열로, hookRopeResolution 개수 만큼 복사
+            // 현재 로프 점 위치를 이전 위치 배열에 복사하여, 다음 물리 계산에서 이전 위치 정보를 사용하기 위한 코드
             System.Array.Copy(hookRopePositions, hookRopePreviousPositions, hookRopeResolution);
-
+            
+            // hookRopeResolution의 양 끝 점을 제외한 만큼 반복 
             for (int i = 1; i < hookRopeResolution - 1; i++)
             {
+                // hookRopeVelocities[i]점의 속도를 velocity에 저장
+                // 점에 움직임을 계산하기 위해
                 Vector3 velocity = hookRopeVelocities[i];
+                // velocity = 중력 * 프레임 간의 실제 시간 간격
+                // 중력 가속도를 적용해서 자연스러운 낙하를 위해
                 velocity += Physics.gravity * Time.unscaledDeltaTime;
 
+                // hookRopePositions[i]위치에서 colliderRadius의 크기만큼 콜라이더 배열을 찾아 hitColliders 넣는다
+                // 로프 점이 주변 환경과 충돌하는지 검사 용도
                 Collider[] hitColliders = Physics.OverlapSphere(hookRopePositions[i], colliderRadius);
+                //
                 bool collision = false;
+                // 주변에 있는 모든 충돌체들을 한 개씩 차례대로 검사
                 foreach (var hitCollider in hitColliders)
                 {
+                    // 플레이어 몸체는 충돌 검사에서 제외
+                    // 로프랑 충돌한 것을 무시하기 위해
                     if (hitCollider.gameObject != playerTransform.gameObject)
                     {
+                        // 
                         if (hitCollider is MeshCollider)
                         {
                             var c = hitCollider as MeshCollider;
