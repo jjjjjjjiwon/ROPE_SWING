@@ -303,17 +303,22 @@ namespace FS_SwingSystem
         // 
         void SimulateHoldRopePhysics()
         {
+            // 현재 훅 지점과 플레이어 사이의 거리로 로프 길이 계산 (여유분 0.1 추가)
             holdRopelength = Vector3.Distance(currentRopeHoldPointTransform.position, ropeAttachTransformInBody.position) + .1f;
+            // // 로프 전체 길이를 구간 수로 나누어 각 세그먼트 길이 계산, 각 segment별 길이 계산 
             float segmentLength = holdRopelength / (holdRopeResolution - 1);
+            // 물리 계산 전 현재 위치를 이전 위치로 백업
             System.Array.Copy(holdRopePositions, holdRopePreviousPositions, holdRopeResolution);
 
             for (int i = 1; i < holdRopeResolution - 1; i++)
             {
+                // 현재 로프 점의 속도 가져오기 (이후 중력, 충돌 등 적용 예정)
                 Vector3 velocity = holdRopeVelocities[i];
+                // 중력 가속도를 시간에 비례해서 속도에 누적 적용
                 velocity += Physics.gravity * Time.unscaledDeltaTime;
-
+                // 현재 속도로 로프 점 위치를 실제 이동 (위치 = 위치 + 속도×시간)
                 holdRopePositions[i] += velocity * Time.unscaledDeltaTime;
-
+            
                 velocity *= 1f - dampening;
                 holdRopeVelocities[i] = velocity;
             }
