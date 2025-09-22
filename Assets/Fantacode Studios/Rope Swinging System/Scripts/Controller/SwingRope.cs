@@ -318,8 +318,9 @@ namespace FS_SwingSystem
                 velocity += Physics.gravity * Time.unscaledDeltaTime;
                 // 현재 속도로 로프 점 위치를 실제 이동 (위치 = 위치 + 속도×시간)
                 holdRopePositions[i] += velocity * Time.unscaledDeltaTime;
-            
+                // 속도 감소
                 velocity *= 1f - dampening;
+                // 감속 적용 후 속도를 저장
                 holdRopeVelocities[i] = velocity;
             }
 
@@ -327,33 +328,46 @@ namespace FS_SwingSystem
             {
                 for (int i = 0; i < holdRopeResolution - 1; i++)
                 {
+                    // 다음 위치에서 현재 위치를 빼라
                     Vector3 delta = holdRopePositions[i + 1] - holdRopePositions[i];
+                    // 현재 두 점 사이가 얼마나 떨어져 있는지
                     float currentDistance = delta.magnitude;
+                    // 로프 세그먼트 길이 차이에 따른 보정 비율 계산
                     float correction = (currentDistance - segmentLength) / currentDistance;
+                    // // 두 점 사이 거리 차이를 보정하기 위한 이동 벡터 계산
                     Vector3 correctionVector = delta * correction * .9f;
 
                     if (i > 0)
                     {
+                        // i번째 점을 보정 벡터 방향으로 이동시켜 거리 차이를 줄임
                         holdRopePositions[i] += correctionVector;
+                        // i+1번째 점은 반대 방향으로 이동시켜 두 점 사이 거리 맞춤
                         holdRopePositions[i + 1] -= correctionVector;
                     }
                     else
                     {
+                        // 첫 번째 점(i == 0)은 고정되었거나 움직임 제한이 크므로,
+                        // 두 번째 점을 보정 벡터의 2배만큼 반대 방향으로 더 크게 이동시켜 거리 보정   
                         holdRopePositions[i + 1] -= correctionVector * 2;
                     }
                 }
 
+                // 로프의 첫 번째 점을 항상 플레이어 몸체에 고정된 위치로 설정
                 holdRopePositions[0] = ropeAttachTransformInBody.position;
+                // 로프의 마지막 점 위치를 훅이 걸렸으면 훅 위치에,
+                // 아니면 훅이 닿는 지점에 고정
                 holdRopePositions[holdRopeResolution - 1] = hooked ? currentRopeHoldPointTransform.position : ropeAttachPointToHook.position;
             }
 
             for (int i = 1; i < holdRopeResolution - 1; i++)
             {
+                // 현재 점 위치와 인접 점들의 중간 위치를 smoothingFactor 비율로 보간하여 부드럽게 위치 조정
                 holdRopePositions[i] = Vector3.Lerp(holdRopePositions[i], (holdRopePositions[i - 1] + holdRopePositions[i + 1]) * 0.5f, smoothingFactor);
             }
 
             for (int i = 1; i < holdRopeResolution - 1; i++)
             {
+                // 현재와 이전 위치 차이를 시간으로 나누어 점의 속도를 계산하고 저장
                 holdRopeVelocities[i] = (holdRopePositions[i] - holdRopePreviousPositions[i]) / Time.unscaledDeltaTime;
             }
         }
